@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "portalbrews",
+	"version": "${version}",
+	"name": "Portal Brews",
+	"description": "Brew lodestone-linked splash potions that teleport to encoded locations.",
+	"authors": ["You"],
+	"license": "CC0-1.0",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.portalbrews.PortalBrews"
+		],
+		"client": [
+			"com.portalbrews.client.PortalBrewsClient"
+		]
+	},
+	"mixins": [
+		"portalbrews.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
