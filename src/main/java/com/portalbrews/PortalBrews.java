@@ -17,6 +17,14 @@ public class PortalBrews implements ModInitializer {
 		PortalBrewsRegistry.init();
 
 		FabricPotionBrewingBuilder.BUILD.register(builder -> {
+			// Register our potions as brewing "containers" so they are accepted as the
+			// input of a later brew. Without this, hasContainerMix() rejects them and only
+			// the first step (splash potion -> Portal Potion) works, because the vanilla
+			// splash potion is the only registered container in that chain.
+			builder.addContainer(PortalBrewsRegistry.PORTAL_POTION_ITEM);
+			builder.addContainer(PortalBrewsRegistry.PORTAL_FRAME_POTION_ITEM);
+			builder.addContainer(PortalBrewsRegistry.PERMANENT_PORTAL_FRAME_POTION_ITEM);
+
 			builder.registerItemRecipe(Items.SPLASH_POTION, Ingredient.of(Items.COMPASS), PortalBrewsRegistry.PORTAL_POTION_ITEM);
 			builder.registerItemRecipe(PortalBrewsRegistry.PORTAL_POTION_ITEM, Ingredient.of(Items.ENDER_PEARL), PortalBrewsRegistry.PORTAL_FRAME_POTION_ITEM);
 			builder.registerItemRecipe(PortalBrewsRegistry.PORTAL_FRAME_POTION_ITEM, Ingredient.of(Items.GHAST_TEAR), PortalBrewsRegistry.PERMANENT_PORTAL_FRAME_POTION_ITEM);
