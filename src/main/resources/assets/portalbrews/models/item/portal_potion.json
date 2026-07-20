@@ -1,0 +1,7 @@
+{
+	"parent": "minecraft:item/generated",
+	"textures": {
+		"layer0": "portalbrews:item/portal_swirl",
+		"layer1": "minecraft:item/splash_potion"
+	}
+}
