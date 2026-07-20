@@ -88,6 +88,21 @@ public final class PortalBrewsRegistry {
 			.build(PORTAL_POTION_ENTITY_KEY)
 	);
 
+	public static final ResourceKey<EntityType<?>> PORTAL_FRAME_ENTITY_KEY = ResourceKey.create(
+		Registries.ENTITY_TYPE,
+		Identifier.fromNamespaceAndPath(PortalBrews.MOD_ID, "portal_frame")
+	);
+
+	public static final EntityType<PortalFrameEntity> PORTAL_FRAME_ENTITY = Registry.register(
+		BuiltInRegistries.ENTITY_TYPE,
+		PORTAL_FRAME_ENTITY_KEY.identifier(),
+		EntityType.Builder.<PortalFrameEntity>of(PortalFrameEntity::new, MobCategory.MISC)
+			.sized(2.0f, 1.5f)
+			.clientTrackingRange(8)
+			.updateInterval(20)
+			.build(PORTAL_FRAME_ENTITY_KEY)
+	);
+
 	public static void init() {
 	}
 }

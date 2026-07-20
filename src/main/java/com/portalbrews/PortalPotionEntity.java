@@ -58,35 +58,42 @@ public class PortalPotionEntity extends AbstractThrownPotion {
 
 	@Override
 	protected void onHitAsPotion(ServerLevel level, ItemStack stack, HitResult hit) {
-		LodestoneTracker tracker = stack.get(DataComponents.LODESTONE_TRACKER);
-		PortalBrews.LOG.info("[portalbrews] potion splash stack={} tracker={}", stack, tracker);
-		Optional<GlobalPos> target = tracker == null ? Optional.empty() : tracker.target();
-
 		Vec3 impact = hit.getLocation();
 		level.sendParticles(ParticleTypes.PORTAL, impact.x, impact.y + 0.5, impact.z, 40, 0.5, 0.5, 0.5, 0.3);
 		level.playSound(null, impact.x, impact.y, impact.z, SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.5f, 1.0f);
 
-		if (target.isEmpty()) {
+		if (stack.is(PortalBrewsRegistry.PORTAL_FRAME_POTION_ITEM) || stack.is(PortalBrewsRegistry.PERMANENT_PORTAL_FRAME_POTION_ITEM)) {
+			spawnFrame(level, stack, impact);
 			return;
 		}
+
+		LodestoneTracker tracker = stack.get(DataComponents.LODESTONE_TRACKER);
+		Optional<GlobalPos> target = tracker == null ? Optional.empty() : tracker.target();
+		if (target.isEmpty()) return;
 
 		GlobalPos gp = target.get();
 		ServerLevel destination = level.getServer().getLevel(gp.dimension());
-		if (destination == null) {
-			PortalBrews.LOG.info("[portalbrews] destination dimension not found: {}", gp.dimension());
-			return;
-		}
+		if (destination == null) return;
 
 		BlockPos p = gp.pos();
 		Vec3 dest = Vec3.atCenterOf(p).add(0, 1, 0);
-
 		AABB area = getBoundingBox().inflate(AbstractThrownPotion.SPLASH_RANGE);
-		List<LivingEntity> victims = level.getEntitiesOfClass(LivingEntity.class, area);
-		PortalBrews.LOG.info("[portalbrews] teleporting {} entities to {} in {}", victims.size(), dest, destination.dimension().identifier());
-		for (LivingEntity victim : victims) {
-			PortalBrews.LOG.info("[portalbrews]   -> {} (was at {})", victim, victim.position());
+		for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, area)) {
 			teleportEntity(victim, destination, dest);
 		}
+	}
+
+	private void spawnFrame(ServerLevel level, ItemStack stack, Vec3 impact) {
+		PortalFrameEntity frame = new PortalFrameEntity(PortalBrewsRegistry.PORTAL_FRAME_ENTITY, level);
+		float yaw = getOwner() != null ? getOwner().getYRot() : 0.0f;
+		frame.snapTo(impact.x, impact.y, impact.z, yaw, 0.0f);
+		frame.configure(
+			stack.get(PortalBrewsRegistry.LODESTONE_ID),
+			stack.is(PortalBrewsRegistry.PERMANENT_PORTAL_FRAME_POTION_ITEM),
+			yaw
+		);
+		level.addFreshEntity(frame);
+		PortalBrews.LOG.info("[portalbrews] spawned frame permanent={} lodestone_id={}", frame.isPermanent(), frame.getLodestoneId());
 	}
 
 	private static void teleportEntity(LivingEntity entity, ServerLevel destination, Vec3 dest) {

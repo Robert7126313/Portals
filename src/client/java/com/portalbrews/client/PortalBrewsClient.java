@@ -12,5 +12,9 @@ public class PortalBrewsClient implements ClientModInitializer {
 			PortalBrewsRegistry.PORTAL_POTION_ENTITY,
 			ctx -> new ThrownItemRenderer<>(ctx, 1.0f, false)
 		);
+		EntityRendererRegistry.register(
+			PortalBrewsRegistry.PORTAL_FRAME_ENTITY,
+			PortalFrameRenderer::new
+		);
 	}
 }
