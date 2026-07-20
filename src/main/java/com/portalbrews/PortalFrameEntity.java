@@ -10,6 +10,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -20,6 +21,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -27,6 +29,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.UUID;
 
 public class PortalFrameEntity extends Entity {
@@ -121,6 +124,35 @@ public class PortalFrameEntity extends Entity {
 
 	private boolean isBreakingSoon() {
 		return !isPermanent() && entityData.get(DATA_TTL) <= BREAK_WARN_TICKS;
+	}
+
+	/** True if this frame leads to the lodestone at {@code pos} in dimension {@code dimId}. */
+	public boolean pointsAtLodestone(String dimId, BlockPos pos) {
+		return hasDestination() && getDestinationDimensionId().equals(dimId) && getDestinationPos().equals(pos);
+	}
+
+	/**
+	 * Collapse every frame (in any loaded dimension) whose destination is the lodestone
+	 * that was just broken. A frame's destination block <em>is</em> its source lodestone,
+	 * so this both honours "destroy the lodestone to remove a permanent portal" and cleans
+	 * up temporary frames whose target no longer exists.
+	 */
+	public static void onLodestoneBroken(MinecraftServer server, String lodestoneDimId, BlockPos pos) {
+		int collapsed = 0;
+		for (ServerLevel level : server.getAllLevels()) {
+			List<? extends PortalFrameEntity> frames = level.getEntities(
+				EntityTypeTest.forClass(PortalFrameEntity.class),
+				frame -> frame.pointsAtLodestone(lodestoneDimId, pos)
+			);
+			for (PortalFrameEntity frame : frames) {
+				frame.collapse(level);
+				frame.discard();
+				collapsed++;
+			}
+		}
+		if (collapsed > 0) {
+			PortalBrews.LOG.info("[portalbrews] lodestone broken at {} {}; collapsed {} frame(s)", lodestoneDimId, pos, collapsed);
+		}
 	}
 
 	/** A short burst of sparks + collapse sound when the frame is torn down. */

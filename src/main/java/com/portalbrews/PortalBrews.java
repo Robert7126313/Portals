@@ -2,9 +2,12 @@ package com.portalbrews;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.registry.FabricPotionBrewingBuilder;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +36,17 @@ public class PortalBrews implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) ->
 			PortalCommand.register(dispatcher)
 		);
+
+		// Breaking a lodestone tears down every portal frame that points at it.
+		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
+			if (world instanceof ServerLevel serverLevel && state.is(Blocks.LODESTONE)) {
+				PortalFrameEntity.onLodestoneBroken(
+					serverLevel.getServer(),
+					serverLevel.dimension().identifier().toString(),
+					pos
+				);
+			}
+		});
 
 		LOG.info("Portal Brews initialized");
 	}
