@@ -16,9 +16,11 @@ public class PortalBrews implements ModInitializer {
 	public void onInitialize() {
 		PortalBrewsRegistry.init();
 
-		FabricPotionBrewingBuilder.BUILD.register(builder ->
-			builder.registerItemRecipe(Items.SPLASH_POTION, Ingredient.of(Items.COMPASS), PortalBrewsRegistry.PORTAL_POTION_ITEM)
-		);
+		FabricPotionBrewingBuilder.BUILD.register(builder -> {
+			builder.registerItemRecipe(Items.SPLASH_POTION, Ingredient.of(Items.COMPASS), PortalBrewsRegistry.PORTAL_POTION_ITEM);
+			builder.registerItemRecipe(PortalBrewsRegistry.PORTAL_POTION_ITEM, Ingredient.of(Items.ENDER_PEARL), PortalBrewsRegistry.PORTAL_FRAME_POTION_ITEM);
+			builder.registerItemRecipe(PortalBrewsRegistry.PORTAL_FRAME_POTION_ITEM, Ingredient.of(Items.GHAST_TEAR), PortalBrewsRegistry.PERMANENT_PORTAL_FRAME_POTION_ITEM);
+		});
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) ->
 			PortalCommand.register(dispatcher)
