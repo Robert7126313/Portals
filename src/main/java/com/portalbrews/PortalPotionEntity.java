@@ -87,10 +87,13 @@ public class PortalPotionEntity extends AbstractThrownPotion {
 		PortalFrameEntity frame = new PortalFrameEntity(PortalBrewsRegistry.PORTAL_FRAME_ENTITY, level);
 		float yaw = getOwner() != null ? getOwner().getYRot() : 0.0f;
 		frame.snapTo(impact.x, impact.y, impact.z, yaw, 0.0f);
+		LodestoneTracker tracker = stack.get(DataComponents.LODESTONE_TRACKER);
+		GlobalPos destination = (tracker != null && tracker.target().isPresent()) ? tracker.target().get() : null;
 		frame.configure(
 			stack.get(PortalBrewsRegistry.LODESTONE_ID),
 			stack.is(PortalBrewsRegistry.PERMANENT_PORTAL_FRAME_POTION_ITEM),
-			yaw
+			yaw,
+			destination
 		);
 		level.addFreshEntity(frame);
 		PortalBrews.LOG.info("[portalbrews] spawned frame permanent={} lodestone_id={}", frame.isPermanent(), frame.getLodestoneId());

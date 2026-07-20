@@ -1,5 +1,7 @@
 package com.portalbrews;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -24,16 +26,27 @@ public class PortalFrameEntity extends Entity {
 		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.STRING);
 	private static final EntityDataAccessor<Float> DATA_YAW =
 		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<String> DATA_DEST_DIM =
+		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.STRING);
+	private static final EntityDataAccessor<BlockPos> DATA_DEST_POS =
+		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.BLOCK_POS);
 
 	public PortalFrameEntity(EntityType<? extends PortalFrameEntity> type, Level level) {
 		super(type, level);
 	}
 
-	public void configure(UUID lodestoneId, boolean permanent, float facingYaw) {
+	public void configure(UUID lodestoneId, boolean permanent, float facingYaw, GlobalPos destination) {
 		entityData.set(DATA_LODESTONE_ID, lodestoneId == null ? "" : lodestoneId.toString());
 		entityData.set(DATA_PERMANENT, permanent);
 		entityData.set(DATA_YAW, facingYaw);
 		entityData.set(DATA_TTL, permanent ? Integer.MAX_VALUE : DEFAULT_TTL);
+		if (destination != null) {
+			entityData.set(DATA_DEST_DIM, destination.dimension().identifier().toString());
+			entityData.set(DATA_DEST_POS, destination.pos());
+		} else {
+			entityData.set(DATA_DEST_DIM, "");
+			entityData.set(DATA_DEST_POS, BlockPos.ZERO);
+		}
 	}
 
 	public UUID getLodestoneId() {
@@ -46,12 +59,18 @@ public class PortalFrameEntity extends Entity {
 	public int getRemainingTicks() { return entityData.get(DATA_TTL); }
 	public float getFacingYaw() { return entityData.get(DATA_YAW); }
 
+	public boolean hasDestination() { return !entityData.get(DATA_DEST_DIM).isEmpty(); }
+	public String getDestinationDimensionId() { return entityData.get(DATA_DEST_DIM); }
+	public BlockPos getDestinationPos() { return entityData.get(DATA_DEST_POS); }
+
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder b) {
 		b.define(DATA_TTL, DEFAULT_TTL);
 		b.define(DATA_PERMANENT, false);
 		b.define(DATA_LODESTONE_ID, "");
 		b.define(DATA_YAW, 0.0f);
+		b.define(DATA_DEST_DIM, "");
+		b.define(DATA_DEST_POS, BlockPos.ZERO);
 	}
 
 	@Override
@@ -73,6 +92,11 @@ public class PortalFrameEntity extends Entity {
 		out.putBoolean("Permanent", isPermanent());
 		out.putString("LodestoneId", entityData.get(DATA_LODESTONE_ID));
 		out.putFloat("FacingYaw", getFacingYaw());
+		out.putString("DestDim", entityData.get(DATA_DEST_DIM));
+		BlockPos p = entityData.get(DATA_DEST_POS);
+		out.putInt("DestX", p.getX());
+		out.putInt("DestY", p.getY());
+		out.putInt("DestZ", p.getZ());
 	}
 
 	@Override
@@ -81,6 +105,12 @@ public class PortalFrameEntity extends Entity {
 		entityData.set(DATA_PERMANENT, in.getBooleanOr("Permanent", false));
 		entityData.set(DATA_LODESTONE_ID, in.getStringOr("LodestoneId", ""));
 		entityData.set(DATA_YAW, in.getFloatOr("FacingYaw", 0.0f));
+		entityData.set(DATA_DEST_DIM, in.getStringOr("DestDim", ""));
+		entityData.set(DATA_DEST_POS, new BlockPos(
+			in.getIntOr("DestX", 0),
+			in.getIntOr("DestY", 0),
+			in.getIntOr("DestZ", 0)
+		));
 	}
 
 	@Override
