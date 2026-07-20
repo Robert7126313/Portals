@@ -13,6 +13,8 @@ import net.minecraft.world.item.Rarity;
 public final class PortalBrewsRegistry {
 	private PortalBrewsRegistry() {}
 
+	public static final int PORTAL_POTION_COLOR = 0xD100FF;
+
 	public static final ResourceKey<Item> PORTAL_POTION_KEY = ResourceKey.create(
 		Registries.ITEM,
 		Identifier.fromNamespaceAndPath(PortalBrews.MOD_ID, "portal_potion")
