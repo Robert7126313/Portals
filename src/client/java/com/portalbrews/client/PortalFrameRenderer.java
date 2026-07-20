@@ -40,7 +40,7 @@ public class PortalFrameRenderer extends EntityRenderer<PortalFrameEntity, Porta
 	private static final int SEGMENTS = 48;
 	private static final int FULL_BRIGHT = 0x00F000F0;
 	private static final int TEMPORARY_RIM = 0xFFFF6A10; // temporary: fiery orange
-	private static final int PERMANENT_RIM = 0xFF33E6D8;  // permanent: steady aqua
+	private static final int PERMANENT_RIM = 0xFFB24BFF;  // permanent: steady violet
 	private static final int BREAK_COLOR = 0xFFFF2410;    // red-orange for a dying frame
 	/** Ticks before expiry at which a temporary frame starts visibly destabilizing. */
 	private static final int BREAK_WARN_TICKS = 100;
