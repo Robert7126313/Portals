@@ -47,6 +47,8 @@ public class PortalFrameEntity extends Entity {
 		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.STRING);
 	private static final EntityDataAccessor<BlockPos> DATA_DEST_POS =
 		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.BLOCK_POS);
+	private static final EntityDataAccessor<Integer> DATA_DEST_TIME =
+		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.INT);
 
 	public PortalFrameEntity(EntityType<? extends PortalFrameEntity> type, Level level) {
 		super(type, level);
@@ -79,6 +81,8 @@ public class PortalFrameEntity extends Entity {
 	public boolean hasDestination() { return !entityData.get(DATA_DEST_DIM).isEmpty(); }
 	public String getDestinationDimensionId() { return entityData.get(DATA_DEST_DIM); }
 	public BlockPos getDestinationPos() { return entityData.get(DATA_DEST_POS); }
+	/** Destination dimension's time of day (0-24000), synced periodically for the sky view. */
+	public int getDestinationTime() { return entityData.get(DATA_DEST_TIME); }
 
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder b) {
@@ -88,6 +92,7 @@ public class PortalFrameEntity extends Entity {
 		b.define(DATA_YAW, 0.0f);
 		b.define(DATA_DEST_DIM, "");
 		b.define(DATA_DEST_POS, BlockPos.ZERO);
+		b.define(DATA_DEST_TIME, 0);
 	}
 
 	private static final double PORTAL_CENTER_Y = 1.5;
@@ -113,6 +118,14 @@ public class PortalFrameEntity extends Entity {
 				return;
 			}
 			entityData.set(DATA_TTL, t - 1);
+		}
+
+		// Keep the destination's time of day loosely in sync for the sky view.
+		if (hasDestination() && tickCount % 40 == 0) {
+			ServerLevel dest = serverLevel.getServer().getLevel(destinationLevelKey());
+			if (dest != null) {
+				entityData.set(DATA_DEST_TIME, (int) (dest.getDefaultClockTime() % 24000L));
+			}
 		}
 
 		emitSparks(serverLevel);
