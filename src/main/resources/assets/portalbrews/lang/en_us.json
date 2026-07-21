@@ -3,5 +3,7 @@
 	"item.portalbrews.portal_frame_potion": "Portal Frame Potion",
 	"item.portalbrews.permanent_portal_frame_potion": "Permanent Portal Frame Potion",
 	"entity.portalbrews.portal_potion": "Portal Potion",
-	"entity.portalbrews.portal_frame": "Portal Frame"
+	"entity.portalbrews.portal_frame": "Portal Frame",
+	"key.categories.portalbrews": "Portal Brews",
+	"key.portalbrews.set_snapshot": "Set Portal Image (hold linked compass)"
 }
