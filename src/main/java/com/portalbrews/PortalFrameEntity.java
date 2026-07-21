@@ -90,9 +90,6 @@ public class PortalFrameEntity extends Entity {
 		b.define(DATA_DEST_POS, BlockPos.ZERO);
 	}
 
-	/** How far, in blocks, an entity may be from the frame to be pulled through. */
-	private static final double PORTAL_HALF_WIDTH = 1.3;
-	private static final double PORTAL_HEIGHT = 3.0;
 	private static final double PORTAL_CENTER_Y = 1.5;
 	private static final double PORTAL_RADIUS = 1.5;
 	/** Ticks of immunity after a trip so entities don't bounce between paired frames. */
@@ -203,15 +200,26 @@ public class PortalFrameEntity extends Entity {
 		if (destination == null) return;
 		Vec3 dest = Vec3.atCenterOf(getDestinationPos()).add(0.0, 1.0, 0.0);
 
-		Vec3 c = position();
-		AABB portal = new AABB(
-			c.x - PORTAL_HALF_WIDTH, c.y, c.z - PORTAL_HALF_WIDTH,
-			c.x + PORTAL_HALF_WIDTH, c.y + PORTAL_HEIGHT, c.z + PORTAL_HALF_WIDTH
-		);
-		for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, portal)) {
+		// The frame is a thin vertical disc facing `yaw`. Only teleport entities that
+		// actually cross the disc plane (not ones standing a block in front of it): test
+		// distance along the plane normal separately from distance within the disc.
+		float yawRad = (float) Math.toRadians(getFacingYaw());
+		Vec3 planeAxis = new Vec3(Math.cos(yawRad), 0.0, Math.sin(yawRad)); // in-plane horizontal
+		Vec3 normal = new Vec3(-Math.sin(yawRad), 0.0, Math.cos(yawRad));   // faces out of the disc
+		Vec3 center = position().add(0.0, PORTAL_CENTER_Y, 0.0);
+
+		AABB candidates = new AABB(center, center).inflate(PORTAL_RADIUS + 0.5);
+		for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, candidates)) {
 			if (entity.isOnPortalCooldown()) continue;
-			teleport(entity, destination, dest);
-			entity.setPortalCooldown(TELEPORT_COOLDOWN);
+			Vec3 rel = entity.position().add(0.0, entity.getBbHeight() * 0.5, 0.0).subtract(center);
+			double alongNormal = Math.abs(rel.dot(normal));
+			double inPlaneX = rel.dot(planeAxis);
+			double inPlaneDist = Math.sqrt(inPlaneX * inPlaneX + rel.y * rel.y);
+			double touchDepth = entity.getBbWidth() * 0.5 + 0.15;
+			if (alongNormal <= touchDepth && inPlaneDist <= PORTAL_RADIUS) {
+				teleport(entity, destination, dest);
+				entity.setPortalCooldown(TELEPORT_COOLDOWN);
+			}
 		}
 	}
 
