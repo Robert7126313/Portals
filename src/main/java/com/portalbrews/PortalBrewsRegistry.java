@@ -97,7 +97,7 @@ public final class PortalBrewsRegistry {
 		BuiltInRegistries.ENTITY_TYPE,
 		PORTAL_FRAME_ENTITY_KEY.identifier(),
 		EntityType.Builder.<PortalFrameEntity>of(PortalFrameEntity::new, MobCategory.MISC)
-			.sized(2.0f, 1.5f)
+			.sized(3.0f, 3.0f)
 			.clientTrackingRange(8)
 			.updateInterval(20)
 			.build(PORTAL_FRAME_ENTITY_KEY)

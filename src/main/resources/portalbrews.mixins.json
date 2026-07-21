@@ -3,6 +3,8 @@
 	"package": "com.portalbrews.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
+		"BrewingStandBlockEntityMixin",
+		"BrewingStandMenuPotionSlotMixin",
 		"CompassItemMixin",
 		"PotionBrewingMixin"
 	],
