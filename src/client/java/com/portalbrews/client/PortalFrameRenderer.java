@@ -95,6 +95,9 @@ public class PortalFrameRenderer extends EntityRenderer<PortalFrameEntity, Porta
 		state.permanent = entity.isPermanent();
 		state.destinationDimension = entity.hasDestination() ? entity.getDestinationDimensionId() : "";
 		state.destinationTime = entity.getDestinationTime();
+		state.snapshotTexture = entity.hasDestination()
+			? PortalSnapshots.textureId(PortalSnapshots.keyFor(entity.getDestinationDimensionId(), entity.getDestinationPos()))
+			: null;
 		state.instability = entity.isPermanent()
 			? 0.0f
 			: 1.0f - Mth.clamp(entity.getRemainingTicks() / (float) BREAK_WARN_TICKS, 0.0f, 1.0f);
@@ -114,24 +117,71 @@ public class PortalFrameRenderer extends EntityRenderer<PortalFrameEntity, Porta
 		float alphaMul = flicker(state.instability, state.ageInTicks);
 		float age = state.ageInTicks;
 
+		RenderType whiteType = RenderTypes.entityTranslucentEmissive(TEXTURE);
+
 		pose.pushPose();
 		pose.mulPose(Axis.YP.rotationDegrees(-state.yaw));
-		RenderType renderType = RenderTypes.entityTranslucentEmissive(TEXTURE);
-		collector.submitCustomGeometry(pose, renderType, (p, vc) -> {
-			gradientDisc(p, vc, sky.top, sky.horizon, alphaMul, SKY_DEPTH);
-			if (sky.drawStars && sky.starAlpha > 0.03f) {
-				starField(p, vc, alphaMul, age, sky.starAlpha);
-			}
-			if (sky.drawCelestial) {
-				float cx = sky.celX * RADIUS * CELE_PLACE;
-				float cy = CENTER_Y + sky.celY * RADIUS * CELE_PLACE;
-				int glow = (0x50 << 24) | (sky.celestial & 0xFFFFFF);
-				filledCircle(p, vc, cx, cy, sky.celRadius * 1.6f, glow, alphaMul, CELE_GLOW_DEPTH);
-				filledCircle(p, vc, cx, cy, sky.celRadius, sky.celestial, alphaMul, CELE_DEPTH);
-			}
-			rimRing(p, vc, rim, alphaMul);
-		});
+		if (state.snapshotTexture != null) {
+			// A real photo of the destination replaces the procedural sky.
+			collector.submitCustomGeometry(pose, RenderTypes.entityTranslucentEmissive(state.snapshotTexture),
+				(p, vc) -> snapshotDisc(p, vc, alphaMul));
+		} else {
+			collector.submitCustomGeometry(pose, whiteType, (p, vc) -> {
+				gradientDisc(p, vc, sky.top, sky.horizon, alphaMul, SKY_DEPTH);
+				if (sky.drawStars && sky.starAlpha > 0.03f) {
+					starField(p, vc, alphaMul, age, sky.starAlpha);
+				}
+				if (sky.drawCelestial) {
+					float cx = sky.celX * RADIUS * CELE_PLACE;
+					float cy = CENTER_Y + sky.celY * RADIUS * CELE_PLACE;
+					int glow = (0x50 << 24) | (sky.celestial & 0xFFFFFF);
+					filledCircle(p, vc, cx, cy, sky.celRadius * 1.6f, glow, alphaMul, CELE_GLOW_DEPTH);
+					filledCircle(p, vc, cx, cy, sky.celRadius, sky.celestial, alphaMul, CELE_DEPTH);
+				}
+			});
+		}
+		collector.submitCustomGeometry(pose, whiteType, (p, vc) -> rimRing(p, vc, rim, alphaMul));
 		pose.popPose();
+	}
+
+	/** Circular disc textured with the paired destination snapshot (square image cropped to the circle). */
+	private static void snapshotDisc(PoseStack.Pose pose, VertexConsumer vc, float alphaMul) {
+		int color = 0xFFFFFFFF;
+		for (int i = 0; i < SEGMENTS; i++) {
+			double t0 = (i / (double) SEGMENTS) * Math.PI * 2.0;
+			double t1 = ((i + 1) / (double) SEGMENTS) * Math.PI * 2.0;
+			float x0 = (float) Math.cos(t0) * RIM_INNER, y0 = CENTER_Y + (float) Math.sin(t0) * RIM_INNER;
+			float x1 = (float) Math.cos(t1) * RIM_INNER, y1 = CENTER_Y + (float) Math.sin(t1) * RIM_INNER;
+
+			texVertex(pose, vc, 0.0f, CENTER_Y, SKY_DEPTH, color, alphaMul, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f);
+			texVertex(pose, vc, x0, y0, SKY_DEPTH, color, alphaMul, uvU(x0), uvV(y0), 0.0f, 0.0f, 1.0f);
+			texVertex(pose, vc, x1, y1, SKY_DEPTH, color, alphaMul, uvU(x1), uvV(y1), 0.0f, 0.0f, 1.0f);
+			texVertex(pose, vc, x1, y1, SKY_DEPTH, color, alphaMul, uvU(x1), uvV(y1), 0.0f, 0.0f, 1.0f);
+
+			texVertex(pose, vc, 0.0f, CENTER_Y, -SKY_DEPTH, color, alphaMul, 0.5f, 0.5f, 0.0f, 0.0f, -1.0f);
+			texVertex(pose, vc, x1, y1, -SKY_DEPTH, color, alphaMul, uvU(x1), uvV(y1), 0.0f, 0.0f, -1.0f);
+			texVertex(pose, vc, x0, y0, -SKY_DEPTH, color, alphaMul, uvU(x0), uvV(y0), 0.0f, 0.0f, -1.0f);
+			texVertex(pose, vc, x0, y0, -SKY_DEPTH, color, alphaMul, uvU(x0), uvV(y0), 0.0f, 0.0f, -1.0f);
+		}
+	}
+
+	private static float uvU(float x) {
+		return (x + RIM_INNER) / (2.0f * RIM_INNER);
+	}
+
+	private static float uvV(float y) {
+		return ((CENTER_Y + RIM_INNER) - y) / (2.0f * RIM_INNER);
+	}
+
+	private static void texVertex(PoseStack.Pose pose, VertexConsumer vc,
+			float x, float y, float z, int argb, float alphaMul, float u, float v, float nx, float ny, float nz) {
+		int alpha = Mth.clamp((int) (((argb >>> 24) & 0xFF) * alphaMul), 0, 255);
+		vc.addVertex(pose, x, y, z)
+			.setColor((argb >>> 16) & 0xFF, (argb >>> 8) & 0xFF, argb & 0xFF, alpha)
+			.setUv(u, v)
+			.setOverlay(OverlayTexture.NO_OVERLAY)
+			.setLight(FULL_BRIGHT)
+			.setNormal(pose, nx, ny, nz);
 	}
 
 	/** As instability rises, the frame dims and stutters erratically - a "breaking soon" tell. */
