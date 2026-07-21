@@ -47,6 +47,8 @@ public class PortalFrameEntity extends Entity {
 		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.STRING);
 	private static final EntityDataAccessor<BlockPos> DATA_DEST_POS =
 		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.BLOCK_POS);
+	private static final EntityDataAccessor<Integer> DATA_DEST_TIME =
+		SynchedEntityData.defineId(PortalFrameEntity.class, EntityDataSerializers.INT);
 
 	public PortalFrameEntity(EntityType<? extends PortalFrameEntity> type, Level level) {
 		super(type, level);
@@ -79,6 +81,8 @@ public class PortalFrameEntity extends Entity {
 	public boolean hasDestination() { return !entityData.get(DATA_DEST_DIM).isEmpty(); }
 	public String getDestinationDimensionId() { return entityData.get(DATA_DEST_DIM); }
 	public BlockPos getDestinationPos() { return entityData.get(DATA_DEST_POS); }
+	/** Destination dimension's time of day (0-24000), synced periodically for the sky view. */
+	public int getDestinationTime() { return entityData.get(DATA_DEST_TIME); }
 
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder b) {
@@ -88,11 +92,9 @@ public class PortalFrameEntity extends Entity {
 		b.define(DATA_YAW, 0.0f);
 		b.define(DATA_DEST_DIM, "");
 		b.define(DATA_DEST_POS, BlockPos.ZERO);
+		b.define(DATA_DEST_TIME, 0);
 	}
 
-	/** How far, in blocks, an entity may be from the frame to be pulled through. */
-	private static final double PORTAL_HALF_WIDTH = 1.3;
-	private static final double PORTAL_HEIGHT = 3.0;
 	private static final double PORTAL_CENTER_Y = 1.5;
 	private static final double PORTAL_RADIUS = 1.5;
 	/** Ticks of immunity after a trip so entities don't bounce between paired frames. */
@@ -116,6 +118,14 @@ public class PortalFrameEntity extends Entity {
 				return;
 			}
 			entityData.set(DATA_TTL, t - 1);
+		}
+
+		// Keep the destination's time of day loosely in sync for the sky view.
+		if (hasDestination() && tickCount % 40 == 0) {
+			ServerLevel dest = serverLevel.getServer().getLevel(destinationLevelKey());
+			if (dest != null) {
+				entityData.set(DATA_DEST_TIME, (int) (dest.getDefaultClockTime() % 24000L));
+			}
 		}
 
 		emitSparks(serverLevel);
@@ -203,15 +213,26 @@ public class PortalFrameEntity extends Entity {
 		if (destination == null) return;
 		Vec3 dest = Vec3.atCenterOf(getDestinationPos()).add(0.0, 1.0, 0.0);
 
-		Vec3 c = position();
-		AABB portal = new AABB(
-			c.x - PORTAL_HALF_WIDTH, c.y, c.z - PORTAL_HALF_WIDTH,
-			c.x + PORTAL_HALF_WIDTH, c.y + PORTAL_HEIGHT, c.z + PORTAL_HALF_WIDTH
-		);
-		for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, portal)) {
+		// The frame is a thin vertical disc facing `yaw`. Only teleport entities that
+		// actually cross the disc plane (not ones standing a block in front of it): test
+		// distance along the plane normal separately from distance within the disc.
+		float yawRad = (float) Math.toRadians(getFacingYaw());
+		Vec3 planeAxis = new Vec3(Math.cos(yawRad), 0.0, Math.sin(yawRad)); // in-plane horizontal
+		Vec3 normal = new Vec3(-Math.sin(yawRad), 0.0, Math.cos(yawRad));   // faces out of the disc
+		Vec3 center = position().add(0.0, PORTAL_CENTER_Y, 0.0);
+
+		AABB candidates = new AABB(center, center).inflate(PORTAL_RADIUS + 0.5);
+		for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, candidates)) {
 			if (entity.isOnPortalCooldown()) continue;
-			teleport(entity, destination, dest);
-			entity.setPortalCooldown(TELEPORT_COOLDOWN);
+			Vec3 rel = entity.position().add(0.0, entity.getBbHeight() * 0.5, 0.0).subtract(center);
+			double alongNormal = Math.abs(rel.dot(normal));
+			double inPlaneX = rel.dot(planeAxis);
+			double inPlaneDist = Math.sqrt(inPlaneX * inPlaneX + rel.y * rel.y);
+			double touchDepth = entity.getBbWidth() * 0.5 + 0.15;
+			if (alongNormal <= touchDepth && inPlaneDist <= PORTAL_RADIUS) {
+				teleport(entity, destination, dest);
+				entity.setPortalCooldown(TELEPORT_COOLDOWN);
+			}
 		}
 	}
 
